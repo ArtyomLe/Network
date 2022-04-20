@@ -1,0 +1,30 @@
+===================pivpn (Wireguard)==================
+
+=> curl -L https://install.pivpn.io | bash      (install)
+
+=> router:
+	1) Make static ip for pc
+	2) NAT port forwarding (local ip / 51820 / UDP)
+
+   DNS entry: *via freedns.afraid.org*      form: test.example.com (динамическая замена публичного ip адреса)
+
+=> pivpn -a                                     (add user)
+=> enter as user not  root
+=> cd configs
+=> nano user.conf                               (client config file *if need to do changes with dns/address/test.example.com*)
+=> cd /etc/wireguard
+=> nano wg0.conf                                (master-server config file)
+
+insert:
+***
+Privat_key=
+
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+Address=
+***
+
+=> systemctl daemon-reload                      (reload service)
+=> pivpn -qr                                    (qr generate mobile code)
+=> wg show                                      (see connections)
