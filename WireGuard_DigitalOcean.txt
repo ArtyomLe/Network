@@ -1,0 +1,74 @@
+=============================Настройка сервера==========================
+ssh-copy-id root@<server_ip>             (copy public key to server to remote connect without password)
+vim /etc/ssh/sshd_config                 (restrict password access to server)
+sudo service ssh restart
+
+sudo apt update && apt upgrade -y
+sudo apt install -y wireguard            (install wireguard)
+sudo cd /etc/wireguard                   (change directory)
+
+wg genkey | tee /etc/wireguard/privatekey | wg pubkey | tee /etc/wireguard/publickey   (create public/privatу key)
+chmod 600 privatekey
+
+nano wg0.conf                            (create wireguard file configuration)
+***
+[Interface]
+PrivateKey = <SERVER-PRIV-KEY>          => cat privatekey <=
+Address = 10.0.0.1/24
+ListenPort = 51820
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+***
+
+echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf (разрешаем проброс пакетов)
+sysctl -p                                        (Проверяем, добавилось или нет)
+
+(Включаем systemd демон с wireguard:)
+systemctl enable wg-quick@wg0.service
+systemctl start wg-quick@wg0.service
+systemctl status wg-quick@wg0.service
+
+
+
+=============================Настройка сервера(добаляем клиента)==========================
+
+wg genkey | tee /etc/wireguard/client01_privatekey | wg pubkey | tee /etc/wireguard/client01_publickey
+vim /etc/wireguard/wg0.conf
+***
+
+[Peer]
+PublicKey = <client01_publickey>        => cat client01_publickey <=     (privatekey Передаём в файл конфигурации на стороне клиента)
+AllowedIPs = 10.0.0.2/32
+
+***
+
+(Перезагружаем systemd сервис с wireguard:)
+systemctl restart wg-quick@wg0
+systemctl status wg-quick@wg0
+
+
+
+=============================Настройка клиента==========================
+
+sudo apt install -y wireguard            (install wireguard)
+sudo cd /etc/wireguard                   (change directory)
+nano client01_wg.conf
+
+***
+
+[Interface]
+PrivateKey = <CLIENT-PRIVATE-KEY>     (Копируем приватный ключ клиента который был дан на сервере wireguard=> cat client01_privatekey <=вбивать на сервере!)    
+Address = 10.0.0.2/32
+DNS = 8.8.8.8
+
+[Peer]
+PublicKey = <SERVER-PUBKEY>           (Копируем публичный ключ сервера который был дан на сервере wireguard=> cat publickey <=вбивать на сервере!)
+Endpoint = <SERVER-IP>:51820          (=> curl ifconfig.me <= IP сервера)
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 20
+
+***
+
+
+Теперь этот файл можно скопировать клиенту client01_wg.conf
