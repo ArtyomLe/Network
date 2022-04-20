@@ -1,0 +1,134 @@
+------------------------------------------------------------------
+www.armbian.com - сайт для скачивания образа linux
+
+www.balena.io/etcher/ - программа для установки образа на флешку
+
+www.putty.org/ - терминал для соединения с orange pi
+------------------------------------------------------------------
+
+
+    sudo nmtui-connect - подключение к wifi сети
+
+
+------------------------------------------------------------------
+
+Установка октопринт:
+
+su -
+wget https://raw.githubusercontent.com/Nebari-xx/octoprint_installer/master/octoprint_install.sh
+chmod +x octoprint_install.sh
+./octoprint_install.sh
+
+
+
+конфиг для правки порта октопринт:
+
+sudo nano /etc/default/octoprint
+
+
+
+
+а стрим конфиг в файле:
+
+sudo nano /usr/local/bin/webcamDaemon
+
+правим конфиг
+
+MJPGSTREAMER_INPUT_USB="input_uvc.so -d /dev/video2"
+
+запуск стрим сервера
+
+systemctl restart webcam.service
+---------------------------------------------------------------
+
+установка библиотек gpio. 
+
+---------------------------------------------------------------
+Для Zero 2
+
+git clone https://github.com/orangepi-xunlong/wiringOP.git
+
+cd wiringOP
+./build clean
+./build 
+
+gpio readall
+
+
+---------------------------------------------------------------
+Для Zero
+
+git clone https://github.com/xpertsavenue/WiringOP-Zero.git
+
+
+
+cd WiringOP-Zero
+chmod +x ./build
+sudo ./build
+
+gpio readall
+
+gpio mode 14 out - переводим в режим выхода
+gpio write 14 1 - подаем питание
+gpio write 14 0 - отключаем питание
+----------------------------------------------------------------
+
+Для Pi PC и Pi PC+
+
+git clone https://github.com/zhaolei/WiringOP.git -b h3
+
+
+cd WiringOP
+chmod +x ./build
+sudo ./build
+
+
+gpio readall
+
+
+gpio mode 25 out - переводим в режим выхода
+gpio write 25 1 - подаем питание
+gpio write 25 0 - отключаем питание
+
+-------------------------------------------------------------------
+
+
+Делаем скрипт
+
+1. cd /home/octo
+2. touch gpio.sh
+3. sudo nano gpio.sh Откроется редактор, вставляем туда:
+---------------------------------------------------------
+для Zero
+
+#!/bin/bash
+gpio mode 14 out
+
+---------------------------------------------------------
+для Pi PC b Pi PC+
+
+#!/bin/bash
+gpio mode 25 out
+
+---------------------------------------------------------
+
+Далее сохраняем - Ctrl+O, Enter, Ctrl+X
+4. chmod +x gpio.sh
+5. nano /etc/crontab
+в самый конец файла вставляем:
+@reboot root /home/octo/gpio.sh
+Далее сохраняем - Ctrl+O, Enter, Ctrl+X
+
+Restart OctoPrint - sudo service octoprint restart
+Restart System - sudo reboot
+Shutdown System - sudo shutdown -h now
+
+ Listen http://192.168.1.100:5000
+# Webcam stream http://192.168.1.100:8080/?action=stream
+
+
+----------------------------------------------------------
+
+Огромное спасибо автору и его товарищу за избавление от танцев с бубном! Но позволю себе немного дополнить: пользователь "осто", после данной установки не обладает правами sudo! Соответственно и системные команды рестарта в octoprint он выполнять не может(проверьте командой под root-ом: "ls /etc/sudoers.d/" - там пусто будет, только README и покажет, а файлов с разрешением нетути). Исправляется просто: под root даём команды: echo "octo ALL=NOPASSWD: /sbin/shutdown" > /etc/sudoers.d/octoprint-shutdown И echo "octo ALL=NOPASSWD: /usr/sbin/service" > /etc/sudoers.d/octoprint-service. Всё, мы мОгем перезагружать Octoprint из интерфейса. Неплохо бы эти строчки втележить прямо в конец скрипта установки.
+
+-------------------------------------------------------------
